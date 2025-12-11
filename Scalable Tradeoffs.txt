@@ -1,0 +1,24 @@
+The project's current architecture, utilizing FastAPI and a Schema-Based Multi-Tenancy model on MongoDB, offers excellent benefits but inherently involves several scalability trade-offs compared to more complex, isolated models.
+Here are the key scalability trade-offs for this project:
+
+1. Database Bottleneck (Single Point of Failure)
+Trade-Off: The entire system relies on a single MongoDB instance to host the Master Database and all the dynamic tenant collections.
+Consequence: This single server becomes the ultimate bottleneck. As the number of organizations (tenants) grows into the hundreds or thousands, the server will experience significant strain from:
+I/O Load: All tenant read/write operations hit the same disk and CPU resources.
+Connection Management: High concurrent connections from all tenants must be managed by one server.
+Metadata Overhead: MongoDB has to manage the metadata and indices for thousands of separate collections, slowing down overall performance.
+More Scalable Alternative: Database-Per-Tenant Architecture. This involves storing each tenant in a completely separate database instance, allowing tenants to be sharded (split) across multiple physical servers for true horizontal scaling.
+
+2. Isolation and Noisy Neighbor Effect
+Trade-Off: While data is logically separated into collections (Schema-Based Multi-Tenancy), the computing resources are shared.
+Consequence: The "Noisy Neighbor" effect is possible. If one tenant initiates a resource-intensive operation (e.g., a massive report generation), it consumes shared CPU, RAM, and I/O capacity, leading to degraded performance (latency spikes) for all other tenants.
+More Scalable Alternative: Database-Per-Tenant or Containerized Isolation. This ensures that a single tenant's performance profile cannot negatively impact others.
+
+3. Authentication Scalability and Revocation
+Trade-Off: The use of JWT (JSON Web Tokens) provides stateless authentication, which is fast, but it compromises immediate token control.
+Consequence: Since JWTs are valid until they expire (30 minutes in your current config), they cannot be instantly revoked. If an admin user is deleted, their token remains valid until expiry. To solve this, you would have to introduce a Token Blocklist/Revocation Check in the database on every authenticated request.
+Impact on Scalability: Re-introducing a database check for revocation on every request negates some of the performance benefits of using a stateless JWT in the first place.
+
+4. Technology Trade-Offs
+Python/FastAPI vs. Compiled Languages: While FastAPI provides excellent concurrency via asynchronous programming for I/O tasks, Python's Global Interpreter Lock (GIL) limits performance for CPU-bound tasks. If the service included heavy data processing or cryptographic calculations, a language like Go or Rust would offer better raw computational scaling.
+MongoDB vs. Relational Database: MongoDB offers schema flexibility, simplifying the multi-tenant setup. However, for applications with extremely strict consistency requirements or complex relational dependencies between tenant data (which is currently avoided by isolation), a horizontally sharded SQL database might offer superior data integrity guarantees, albeit with much higher setup complexity.
