@@ -102,3 +102,7 @@ Authorize: Use the JWT token in the "Authorize" button on the Swagger UI page to
 Test Secured Endpoints: Verify that PUT /org/update and DELETE /org/delete only work with the correct, authorized admin user.
 
 
+**High Level Diagram**
+![Project Architecture](architecture_diagram.png)
+
+
