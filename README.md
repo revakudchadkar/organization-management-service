@@ -30,7 +30,7 @@ source venv/bin/activate
 3. Install Dependencies
 Install all necessary Python packages:
 pip install -r requirements.txt
-# OR, if requirements.txt is not yet generated:
+OR, if requirements.txt is not yet generated:
 pip install fastapi uvicorn motor 'pydantic[email]' passlib[bcrypt] python-jose[cryptography] pydantic-settings
 
 4. Configure Application Settings (Important!)
