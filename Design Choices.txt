@@ -1,0 +1,28 @@
+Design Choices
+
+1. The Multi-Tenancy Strategy: Schema-Based Isolation
+The Core Choice: Single Database, Dynamic Collections
+We opted for a Schema-Based Multi-Tenancy model where a single MongoDB instance hosts a dedicated collection for each organization (org_<name>).
+Rationale: This strategy offers a superior balance of simplicity and isolation. It avoids the infrastructural overhead of managing separate database instances for every tenant while still ensuring each organization's data is logically separated.
+Data Isolation: Each organization's data lives in its own silo, which simplifies per-tenant indexing, backup strategies, and internal data governance.
+Global Metadata: The centralized MasterOrganizationDB stores sensitive global records (Admin Credentials, Org Names, Collection Names), ensuring rapid lookup and efficient authentication checks.
+Update/Rename Logic: The PUT /org/update endpoint uses MongoDB's built-in, atomic renameCollection operation. This is significantly faster and more robust than manually copying data to a new collection, thus fulfilling the requirement to "sync existing data" efficiently.
+
+2. Technical Stack Decisions: Speed, Flexibility, and Concurrency
+FastAPI & Asynchronous Python
+FastAPI: This framework was chosen over traditional options like Django/Flask for its native support of asynchronous programming (async/await). This makes the service highly performant and scalable for I/O-bound tasks (like database lookups/writes) by efficiently handling thousands of concurrent requests without thread blocking.
+Motor (Async MongoDB Driver): This driver ensures all database interactions are non-blocking and fully leverage the asynchronous nature of FastAPI, preventing server threads from being tied up waiting for database responses.
+MongoDB (NoSQL)
+Flexibility: MongoDB is ideal for a multi-tenant service where a tenant's internal data structures might evolve or vary slightly, as the schemaless nature is highly adaptive.
+Dynamic Creation: It perfectly supports the core requirement of programmatically creating a new collection for every tenant on the fly, a task that is simpler in MongoDB than provisioning databases in a traditional SQL context.
+
+3. Security and Authentication Flow
+Password Storage (bcrypt): We used the bcrypt algorithm via passlib. bcrypt is an industry-standard cryptographic hash that is purposely slow (high work factor) to make brute-force attacks computationally infeasible.
+Authentication (JWT): The implementation utilizes JWT (JSON Web Tokens) to enforce a stateless authentication mechanism. After the initial login, the token carries essential metadata (Admin Email, Organization Name) required for subsequent authorization, eliminating the need for repeated database queries for session validation on every secure endpoint.
+Authorization Check (get_current_admin): The get_current_admin dependency acts as a high-level gatekeeper. It not only validates the token's signature and expiry but, crucially, verifies that the authenticated user is only performing actions on their own organization, satisfying the isolation requirement for secured endpoints like Update and Delete.
+
+4. Addressing Future Scalability (The Trade-off)
+While the current architecture is robust and fully functional for a pilot project, it acknowledges a clear ceiling: the capacity of the single MongoDB instance.
+The Bottleneck: The Master Database handles all traffic (metadata, admin data, and all tenant CRUD operations). In the event of rapid tenant growth (thousands of organizations), this single server will inevitably become a single point of failure and a performance bottleneck due to excessive I/O load and collection management overhead.
+Better Alternative (Database-Per-Tenant): The most scalable future enhancement would be to migrate to a Database-Per-Tenant Model.
+Recommended Path: The current project is an excellent starting point. The next logical step is to update the Master Database to store a unique dedicated connection URI for each tenant. This change would allow organizations to be sharded across separate MongoDB clusters, achieving true horizontal scalability and maximum tenant isolation.
