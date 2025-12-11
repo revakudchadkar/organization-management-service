@@ -1,0 +1,15 @@
+# Virtual Environment
+venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Local config file (optional, but good practice if you added local secrets)
+config.py 
+
+# Local database files (if any)
+*.sqlite3
+
+# Uvicorn/FastAPI specific
+.pytest_cache/
